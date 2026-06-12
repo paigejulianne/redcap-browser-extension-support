@@ -6,7 +6,7 @@
   "namespace": "METRC\\BrowserExtension",
   "versions": [
     {
-      "1.2.2": "Usability enhancements",
+      "1.2.2": "Security enhancements and completed README document",
       "1.2.1": "Security enhancements",
       "1.2.0": "Bug fixes and changed configuration data for browser extension",
       "1.1.1": "Bug fixes and added information to user access page (index.php)",
@@ -18,8 +18,7 @@
   "authors": [
     {
       "name": "Paige Julianne Sullivan",
-      "email": "psullivan@jhu.edu",
-      "institution": "Johns Hopkins Bloomberg School of Public Health - METRC"
+      "email": "paige@paigejulianne.com"
     }
   ],
   "links": {
