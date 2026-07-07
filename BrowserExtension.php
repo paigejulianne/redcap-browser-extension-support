@@ -60,17 +60,6 @@ class BrowserExtension extends AbstractExternalModule {
         }
     }
 
-    /**
-     * Validate a legacy REDCap API token. Kept for backward compatibility
-     * with older browser extension installations.
-     */
-    public function validateAPIToken($project_id, $api_token) {
-        $sql = "SELECT username FROM redcap_user_rights WHERE project_id = ? AND api_token = ?";
-        $q = $this->query($sql, [$project_id, $api_token]);
-        $row = $q->fetch_assoc();
-        return ($row['username']) ?? false;
-    }
-
     public function getAllProjects($username, $term) {
         $username = $this->escape($username);
         $term = $this->escape($term);
@@ -131,11 +120,9 @@ class BrowserExtension extends AbstractExternalModule {
 
     /**
      * Handle API requests from the browser extension.
-     * Supports both new extension tokens (ext_token) and legacy API tokens (api_token).
      */
     public function redcap_module_api($action, $payload, $project_id, $user_id, $format, $returnFormat, $csvDelim) {
         $ext_token = $payload['ext_token'] ?? null;
-        $api_token = $payload['api_token'] ?? null;  // Legacy support
         $pid = $payload['pid'] ?? null;
 
         if (in_array($action, ['projects', 'extraconfig', 'newrec'])) {
@@ -146,12 +133,9 @@ class BrowserExtension extends AbstractExternalModule {
             // Set project context so getProjectSetting() works
             $this->setProjectId($pid);
 
-            // Try new extension token first, then fall back to legacy API token
             $username = null;
             if ($ext_token) {
                 $username = $this->validateExtensionToken($ext_token);
-            } elseif ($api_token) {
-                $username = $this->validateAPIToken($pid, $api_token);
             }
 
             if (!$username) {

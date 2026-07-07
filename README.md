@@ -37,9 +37,6 @@ To connect the extension:
 
 *(A manual fallback is provided on the page for users who need to copy and paste their configuration key.)*
 
-## Backward Compatibility
-
-The v2.0 external module maintains backward compatibility with legacy configuration keys. Users who configured their extension prior to the v2.0 update will not experience disruptions and can continue using their existing API-token-based keys until they decide to reconfigure.
 
 ## Support
 
