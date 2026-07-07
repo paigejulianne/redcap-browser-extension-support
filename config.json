@@ -1,11 +1,11 @@
 {
   "name": "REDCap Browser Extension Support",
   "description": "Quickly and Easily Work with REDCap, including jumping straight to records and project management pages. Administrators also get buttons to frequently used system configuration pages.  Read the README before installing on your server for configuration instructions.",
-
   "documentation": "README.md",
   "namespace": "METRC\\BrowserExtension",
   "versions": [
     {
+      "2.0.0": "Rebuilt to use External Modules API for better security and compatibility",
       "1.2.2": "Security enhancements and completed README document",
       "1.2.1": "Security enhancements",
       "1.2.0": "Bug fixes and changed configuration data for browser extension",
@@ -18,7 +18,8 @@
   "authors": [
     {
       "name": "Paige Julianne Sullivan",
-      "email": "paige@paigejulianne.com"
+      "email": "paige@paigejulianne.com",
+      "institution": "METRC"
     }
   ],
   "links": {
@@ -32,16 +33,31 @@
       }
     ]
   },
-
-  "no-auth-pages": [ "projects", "extraconfig", "newrec" ],
-
-  "framework-version": 12,
-
+  "api-actions": {
+    "projects": {
+      "description": "Fetch project list for the extension",
+      "access": [
+        "no-auth"
+      ]
+    },
+    "extraconfig": {
+      "description": "Fetch extra configuration for the extension",
+      "access": [
+        "no-auth"
+      ]
+    },
+    "newrec": {
+      "description": "Create a new record and redirect",
+      "access": [
+        "no-auth"
+      ]
+    }
+  },
+  "framework-version": 16,
   "compatibility": {
     "php-version-min": "7.2.0",
     "php-version-max": "",
     "redcap-version-min": "13.1.2",
     "redcap-version-max": ""
   }
-
 }
