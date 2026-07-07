@@ -1,31 +1,47 @@
-# REDCap Browser Extension Support
+# REDCap Browser Extension Support External Module
 
-This external module for REDCap enables your users to use the REDCap Browser Extension to quickly navigate your REDCap 
-installation, being able to type in a project name, a record number, and going straight to that record's home page - no 
-more waiting for long dropdowns to load. It also includes features for the administrator - being able to jump straight 
-into the configuration for a project.
+This external module for REDCap acts as the backend support for the **REDCap Browser Extension**. It enables your users to quickly navigate your REDCap installation, allowing them to type in a project name, a record number, and go straight to that record's home page—bypassing long dropdowns and extra clicks. It also includes shortcuts for administrators and project designers to jump straight into configuration pages.
 
-Despite using an API key, it does not bypass REDCap security and safeguards.  Basically, the browser extension just reads 
-a list of projects a user has access to, whether or not they have admin access to that project, and then constructs a URL 
-based on the project the user selects and the record number entered.  If the user still has a REDCap login session active, 
-then they will jump straight to the page.  Otherwise, they will be presented with the REDCap login screen before being taken 
-to the page.
+## v2.0 Redesign: Enhanced Security & One-Click Setup
 
-This extension is needed so you, administrators can restrict who has access to this tool.  Essentially, we 'block' access 
-to the project listing and details through the REDCap API.  The API requires you pass it an API key, so it can 'match up' 
-requests with authorized users. Now, you *could* enable this module on any existing project, but we highly recommend you 
-create an entirely new project so you can efficiently manage user permissions.
+Version 2.0 brings major security and usability improvements:
+- **Dedicated Extension Tokens**: The module no longer relies on raw REDCap API tokens. Instead, it generates a dedicated extension token for each user (stored securely in project settings). This token is strictly scoped to project listing and navigation; it **cannot** be used to export or import project data.
+- **One-Click Auto-Setup**: Users no longer have to copy and paste a long configuration key. They simply visit the configuration page and click the extension icon in their browser toolbar to automatically configure the extension.
+- **On-Demand Token Generation**: Tokens are created dynamically when a user visits the configuration page, eliminating the need for admins to pre-generate tokens for everyone.
 
-So, after creating a new project, you'll want to enable the module for that project.  That will give you a new page in the
- left navigation called 'Browser Extension Configuration'.  In the center will be a video, but at the bottom of the page
-(that only you, administrators can see) is a link "Grant all users access to this project and generate API keys".
+## How It Works
 
-This will go through your entire system's user list and generate an API key for them in this project if they don't already 
-have one (so you can do this multiple times as your userbase grows).  Now, the extension and project are configured and ready
- to be used with the browser extension.  Details for that can be seen in the video on the configuration page that you'll 
-direct your users.
+The browser extension reads a list of projects a user has access to, checks their admin/design permissions, and constructs URLs based on the user's selections. 
 
-If you have further questions or need assistance, please reach out to me via email.
+All routing goes through REDCap's secure `api-actions` framework. If the user has an active REDCap login session, they jump straight to the page. If not, they are presented with the standard REDCap login screen before being redirected. **It does not bypass REDCap security.**
 
-Paige Julianne Sullivan
-<paige@paigejulianne.com>
+## Installation & Setup
+
+We highly recommend creating a **dedicated, system-wide "Utility" project** for this module rather than enabling it on an existing research project. This allows you to efficiently manage user permissions for the extension.
+
+1. Create a new REDCap project (e.g., "Browser Extension Support").
+2. Enable this External Module on the project.
+3. Once enabled, you will see a new link in the left navigation called **Browser Extension Configuration**.
+4. **Granting Access**: At the bottom of the configuration page (visible only to system administrators), click the link to *"Grant all users access to this project"*.
+   - This script will add all current REDCap users to this project. 
+   - You can run this script periodically as your userbase grows.
+
+## User Instructions
+
+Direct your users to the **Browser Extension Configuration** page in your dedicated project. The page provides a video tutorial and links to download the extension.
+
+To connect the extension:
+1. The user installs the browser extension.
+2. The user navigates to the Browser Extension Configuration page.
+3. The user clicks the extension icon in their browser toolbar. A green banner will appear confirming the server was detected, and clicking "Configure Extension" completes the setup instantly.
+
+*(A manual fallback is provided on the page for users who need to copy and paste their configuration key.)*
+
+## Backward Compatibility
+
+The v2.0 external module maintains backward compatibility with legacy configuration keys. Users who configured their extension prior to the v2.0 update will not experience disruptions and can continue using their existing API-token-based keys until they decide to reconfigure.
+
+## Support
+
+If you have further questions or need assistance, please reach out to me via email:
+Paige Julianne Sullivan (<paige@paigejulianne.com>)

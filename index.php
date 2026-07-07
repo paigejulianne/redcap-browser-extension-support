@@ -2,7 +2,18 @@
 global $module;
 require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
 
+$token = $module->getOrCreateExtensionToken(USERID);
+$configKey = $module->getConfigurationKey(USERID, PROJECT_ID);
+global $redcap_base_url;
 ?>
+
+<!-- Hidden element for one-click browser extension auto-configuration -->
+<div id="redcap-ext-config"
+     data-base-url="<?php echo $module->escape($redcap_base_url); ?>"
+     data-pid="<?php echo intval(PROJECT_ID); ?>"
+     data-token="<?php echo $module->escape($token); ?>"
+     style="display:none;"></div>
+
 <h5>REDCap Browser Extension Support</h5>
     <p><strong>What is the REDCap Browser Extension?</strong> <br/><br/>
         The browser extension helps you quickly and easily navigate this REDCap server.  You can easily jump directly
@@ -27,31 +38,29 @@ if (stripos($ua, 'chrome') !== false || stripos($ua, 'chromium') !== false || st
     </p>
 <?php endif; ?>
 
+<div style="background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px; margin: 20px 0;">
+    <h6 style="margin-top: 0; color: #155724;">&#9889; One-Click Setup (Recommended)</h6>
+    <p style="margin-bottom: 0; color: #155724;">
+        With the extension installed, just <strong>click the REDCap Browser Extension icon</strong> in your browser toolbar
+        while you're on this page. It will automatically detect your server and configure itself &mdash; no copying or pasting needed.
+    </p>
+</div>
 
+<div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 15px; margin: 20px 0;">
+    <h6 style="margin-top: 0;">Manual Setup</h6>
+    <p>If the one-click setup doesn't work, you can manually configure the extension:</p>
     <p>
-Once you have installed the extension, you need to configure it.  <button onclick="navigator.clipboard.writeText('<?php echo $module->getConfigurationKey(USERID, PROJECT_ID) ?>');">
-        Click this button</button> to copy your configuration key to your clipboard.
-    <strong>Do not share your configuration key with anyone.</strong>  It contains your API token and anyone with access to it can get a list of your projects.
-</p>
-    <p>
-Next, open the extension.  A popup should appear asking for your configuration key.  Paste the contents of your clipboard in the field and click save.
-</p>
-
-    <p>
-    If a popup window doesn't appear, then you need to select the extension icon in your browser's toolbar.  Right click on it, then select "Configure" or "Options".
-    Paste the contents of your clipboard in the field and click save.
-</p>
-<p>
-    Once you have configured the extension, you can use it to quickly navigate to a record in REDCap.  Just click the extension's icon (if you have it pinned).
-    You'll be presented with a popup box.  Start typing the project name and select it from the list.  Then just enter a new or existing record ID and click "Go".
-    If you're already logged into REDCap, you will be taken straight to the record in a new browser tab.  If you're not logged in, you will be prompted to log in and
-    then redirected to the record's home page.</p>
-
+        <button onclick="navigator.clipboard.writeText('<?php echo $module->escape($configKey); ?>');">&#128203; Copy Configuration Key</button>
+        &nbsp; <strong>Do not share this key with anyone.</strong>
+    </p>
+    <p style="margin-bottom: 0;">
+        Open the extension options (right-click the extension icon &rarr; Options) and paste the key into the configuration field.
+    </p>
+</div>
 
 <?php if (SUPER_USER): ?>
 <p><h3>Admin Tools</h3>
-<a href="<?php echo $module->getUrl('grant_all.php'); ?>">Grant all users access to this project and generate API keys</a> (may take a few moments to load while the operation completes)
-
+<a href="<?php echo $module->getUrl('grant_all.php'); ?>">Grant all users access to this project</a> (may take a few moments to load while the operation completes)
     </p>
 <?php endif; ?>
 

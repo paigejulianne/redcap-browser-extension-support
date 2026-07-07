@@ -7,17 +7,63 @@ use ExternalModules\ExternalModules;
 
 class BrowserExtension extends AbstractExternalModule {
 
+    /**
+     * Show the extension config link to all users who have access to the project.
+     * No longer requires an API token — extension tokens are generated on demand.
+     */
     public function redcap_module_link_check_display($project_id, $link) {
-        if ($this->getAPIToken(USERID, $project_id)) return $link;
+        return $link;
     }
 
-    public function getAPIToken($user, $project_id) {
-        $sql = "SELECT api_token FROM redcap_user_rights WHERE username = ? AND project_id = ? AND api_token IS NOT NULL";
-        $q = $this->query($sql, [$user, $project_id]);
-        $row = $q->fetch_assoc();
-        return ($row['api_token']) ?? false;
+    /**
+     * Generate or retrieve an extension-specific authentication token for a user.
+     * Tokens are stored as project settings, keyed by a forward mapping (token -> user)
+     * and a reverse mapping (user -> token) for efficient lookup in both directions.
+     */
+    public function getOrCreateExtensionToken($username) {
+        // Check for an existing token via the reverse mapping
+        $existing = $this->getProjectSetting("ext_user_" . $username);
+        if ($existing) {
+            // Verify the forward mapping still exists
+            $data = $this->getProjectSetting("ext_token_" . $existing);
+            if ($data) return $existing;
+        }
+
+        // Generate a new 32-character hex token (128 bits of entropy)
+        $token = bin2hex(random_bytes(16));
+        $this->setProjectSetting("ext_token_" . $token, json_encode([
+            'username' => $username,
+            'created' => time()
+        ]));
+        $this->setProjectSetting("ext_user_" . $username, $token);
+        return $token;
     }
 
+    /**
+     * Validate an extension token and return the associated username, or false.
+     */
+    public function validateExtensionToken($token) {
+        $data = $this->getProjectSetting("ext_token_" . $token);
+        if (!$data) return false;
+        $parsed = json_decode($data, true);
+        return $parsed['username'] ?? false;
+    }
+
+    /**
+     * Revoke a user's extension token.
+     */
+    public function revokeExtensionToken($username) {
+        $existing = $this->getProjectSetting("ext_user_" . $username);
+        if ($existing) {
+            $this->removeProjectSetting("ext_token_" . $existing);
+            $this->removeProjectSetting("ext_user_" . $username);
+        }
+    }
+
+    /**
+     * Validate a legacy REDCap API token. Kept for backward compatibility
+     * with older browser extension installations.
+     */
     public function validateAPIToken($project_id, $api_token) {
         $sql = "SELECT username FROM redcap_user_rights WHERE project_id = ? AND api_token = ?";
         $q = $this->query($sql, [$project_id, $api_token]);
@@ -68,34 +114,57 @@ class BrowserExtension extends AbstractExternalModule {
         return ($row) ? true : false;
     }
 
-    public function getConfigurationKey($user, $project_id) {
+    /**
+     * Build the configuration key for the browser extension.
+     * New format: {baseUrl}|{project_id}|{extension_token}
+     * (replaces the old 6-field format that exposed the REDCap API token)
+     */
+    public function getConfigurationKey($username, $project_id) {
         global $redcap_base_url;
-        $api_token = $this->getAPIToken($user, $project_id);
-        $configuration_key = $this->escape($redcap_base_url . '|' . '|' . '|' . $project_id . '|' . $api_token . '|');
-        return $configuration_key;
+        $token = $this->getOrCreateExtensionToken($username);
+        return $this->escape($redcap_base_url . '|' . $project_id . '|' . $token);
     }
 
     public function escape($string) {
         return ExternalModules::escape($string);
     }
 
+    /**
+     * Handle API requests from the browser extension.
+     * Supports both new extension tokens (ext_token) and legacy API tokens (api_token).
+     */
     public function redcap_module_api($action, $payload, $project_id, $user_id, $format, $returnFormat, $csvDelim) {
-        $api_token = $payload['api_token'] ?? $_GET['api_token'] ?? null;
-        $pid = defined('PROJECT_ID') ? PROJECT_ID : ($payload['pid'] ?? $_GET['pid'] ?? null);
+        $ext_token = $payload['ext_token'] ?? null;
+        $api_token = $payload['api_token'] ?? null;  // Legacy support
+        $pid = $payload['pid'] ?? null;
 
         if (in_array($action, ['projects', 'extraconfig', 'newrec'])) {
-            $username = $this->validateApiToken($pid, $api_token);
+            if (!$pid) {
+                return $this->framework->apiErrorResponse('Missing project ID', 400);
+            }
+
+            // Set project context so getProjectSetting() works
+            $this->setProjectId($pid);
+
+            // Try new extension token first, then fall back to legacy API token
+            $username = null;
+            if ($ext_token) {
+                $username = $this->validateExtensionToken($ext_token);
+            } elseif ($api_token) {
+                $username = $this->validateAPIToken($pid, $api_token);
+            }
+
             if (!$username) {
-                return $this->framework->apiErrorResponse('Invalid API Token', 401);
+                return $this->framework->apiErrorResponse('Invalid or missing authentication token', 401);
             }
         }
 
         header('Access-Control-Allow-Origin: *');
-        header('Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Origin, Content-Type, X-Auth-Token');
+        header('Access-Control-Allow-Methods: GET, POST');
+        header('Access-Control-Allow-Headers: Origin, Content-Type');
 
         if ($action === 'projects') {
-            $term = $payload['term'] ?? $_GET['term'] ?? '';
+            $term = $payload['term'] ?? '';
             $projects = $this->getAllProjects($username, $term);
             $projectData = array();
             foreach ($projects as $proj_id) {
@@ -118,16 +187,17 @@ class BrowserExtension extends AbstractExternalModule {
         }
 
         if ($action === 'newrec') {
-            $target_project = $this->escape($payload['target_project'] ?? $_REQUEST['target_project'] ?? '');
+            $target_project = intval($payload['target_project'] ?? 0);
             
             $sql = "SELECT MAX(record) AS max_record FROM redcap_data WHERE project_id = ? GROUP BY record ORDER BY record DESC LIMIT 1";
             $result = $this->query($sql, [$target_project]);
             $row = $result->fetch_assoc();
-            $max_record = $this->escape($row['max_record']);
+            $max_record = intval($row['max_record'] ?? 0);
 
-            header("Location: " . APP_PATH_WEBROOT . "DataEntry/record_home.php?auto=1&pid=$target_project&id=" . ($max_record + 1));
-            exit();
+            return $this->framework->apiJsonResponse([
+                'record_id' => $max_record + 1,
+                'target_project' => $target_project
+            ]);
         }
     }
-
 }
